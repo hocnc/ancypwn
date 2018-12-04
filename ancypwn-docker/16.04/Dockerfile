@@ -24,7 +24,7 @@ RUN dpkg --add-architecture i386 && apt-get update && \
     lxterminal && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
-    cd ~ && tar -xvf /usr/src/glibc/glibc-2.23.tar.xz
+    cd ~ && tar -xf /usr/src/glibc/glibc-2.23.tar.xz
 
 # python/ruby packages & gdb-plugin
 RUN pip install --no-cache-dir pwntools ropper ancypatch && \
@@ -39,7 +39,16 @@ RUN cd ~/ && \
 
 ENV LANG C.UTF-8
 
-VOLUME ["/pwn"]
-WORKDIR /pwn
+RUN apt-get install -y openssh-server
+RUN mkdir /var/run/sshd
+RUN echo 'root:1' | chpasswd
+RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
-CMD ["/bin/bash"]
+# SSH login fix. Otherwise user is kicked off after login
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+
+ENV NOTVISIBLE "in users profile"
+RUN echo "export VISIBLE=now" >> /etc/profile
+
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D"]
